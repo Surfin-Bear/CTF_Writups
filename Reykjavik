@@ -225,7 +225,7 @@ b490 58b7 dcff cmp	#0xb758, -0x24(r4)
 3012 7f00      push	#0x7f
 b012 6424      call	#0x2464
 
-trying that value as the password opens the lock. it would seem that
+trying the value being compared as the password opens the lock. it would seem that
 encryption is pointless if you dont properly check values i.e. not using
 raw value comparison
 
